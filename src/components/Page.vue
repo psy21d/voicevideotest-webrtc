@@ -1,6 +1,8 @@
 <template>
   <div class="page">
     <div class="for-video">
+      <div id="wavesurfer" ref="wavesurfer">
+      </div>
       <video class="video" ref="video" :srcObject="stream" autoplay="autoplay">
       </video>
     </div>
@@ -49,6 +51,11 @@
 <script>
 import webrtcAdapter from 'webrtc-adapter';
 import '@/../node_modules/typeface-roboto/index.css';
+/* eslint-disable-next-line */
+import WaveSurfer from'wavesurfer.js';
+import Cursor from "wavesurfer.js/dist/plugin/wavesurfer.cursor";
+import Microphone from'wavesurfer.js/dist/plugin/wavesurfer.microphone';
+
 
 export default {
   name: 'Page',
@@ -68,6 +75,16 @@ export default {
       audiooutput: null,
       stream: null,
       pause: false,
+      playerOptions: {
+        plugins: [
+          Cursor.create(),
+          Microphone.create()
+        ],
+        height: 60,
+      },
+      wavesurfer: null,
+      initialized: false,
+      mic: null,
     }
   },
   mounted() {
@@ -85,6 +102,23 @@ export default {
       .catch(error => {
         console.error('Error accessing media devices.', error);
       });
+    this.wavesurfer = WaveSurfer.create({
+      container: '#wavesurfer', 
+      ... this.playerOptions
+    })
+
+    let mic = this.wavesurfer.microphone
+
+    mic.on('deviceReady', function(stream) {
+        console.log('Device ready!', stream);        
+    });
+    mic.on('deviceError', function(code) {
+        console.warn('Device error: ' + code);
+    });
+
+    mic.start();
+
+    this.mic = mic;
   },
   watch: {
     devices(newDevs) {
@@ -176,10 +210,12 @@ export default {
       }
       const audioSource = this.audioinput && this.audioinput.deviceId;
       const videoSource = this.videoinput && this.videoinput.deviceId;
-       const constraints = {
-         audio: {deviceId: audioSource ? {exact: audioSource} : undefined},
-         video: {deviceId: videoSource ? {exact: videoSource} : undefined}
-       };
+      const constraints = {
+        audio: {deviceId: audioSource ? {exact: audioSource} : undefined},
+        video: {deviceId: videoSource ? {exact: videoSource} : undefined}
+      };
+      this.mic.constraints = constraints;
+      this.mic.start()
       navigator.mediaDevices.getUserMedia(constraints).then(this.gotStream).catch(this.handleError);
     },
   }
@@ -204,7 +240,6 @@ export default {
 }
 .video {
   width: 100%;
-  height: 100%;
 }
 .caption {
   padding: 0;

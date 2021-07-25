@@ -88,8 +88,29 @@
       v-for="(user, n) in users"
       :key="n"
       v-show="user.disabled"
+      :ref="`user${user.id}`"
+      @mouseenter = showPopper(user.id)
+      @mouseleave = hidePopper(user.id)
     >
       {{ n+1 }}
+      <div 
+        class="tooltip"
+        role="tooltip"
+        :ref="`popper${user.id}`"
+      >
+        <div class="tooltip-item">
+          Пользователь: {{ user.name }}
+        </div>
+        <div class="tooltip-item">
+          Микрофон: {{ user.audioinput ? user.audioinput.label : 'нет' }}
+        </div>
+        <div class="tooltip-item">
+          Камера: {{ user.videoinput ? user.videoinput.label : 'нет' }}
+        </div>
+        <div class="tooltip-item">
+          Динамики: {{ user.audiooutput ? user.audiooutput.label : 'нет' }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -100,6 +121,8 @@ import '@/../node_modules/typeface-roboto/index.css';
 /* eslint-disable-next-line */
 import WaveSurfer from'wavesurfer.js';
 import Microphone from'wavesurfer.js/dist/plugin/wavesurfer.microphone';
+import Popper from 'popper.js'
+Popper.Defaults.modifiers.computeStyle.gpuAcceleration = false
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -138,6 +161,7 @@ export default {
       noaudioinput: false,
       novideoinput: false,
       noaudiooutput: false,
+      poppers: {},
     }
   },
   mounted() {
@@ -271,8 +295,29 @@ export default {
       }
 
       this.user.disabled = true;
+      this.$nextTick(function() {
+        this.poppers[`user${this.user.id}`] =
+        new Popper(
+          this.$refs[`user${this.user.id}`],
+          this.$refs[`popper${this.user.id}`],
+          {
+            placement: 'top',
+            offset: [0, 20],
+            strategy: 'fixed',
+          }
+        )
+
+      });
 
       this.$emit('update:users', this.users)
+    },
+
+    showPopper(id) {
+      this.$refs[`popper${id}`].setAttribute('data-show', '')
+    },
+
+    hidePopper(id) {
+      this.$refs[`popper${id}`].removeAttribute('data-show')
     },
 
     // Attach audio output device to video element using device/sink ID.
@@ -412,5 +457,25 @@ export default {
   display: flex;
   flex-direction: row;
   align-items: center;
+}
+.tooltip {
+  background: #fff;
+  color: #000;
+  font-weight: normal;
+  padding: 4px 8px;
+  font-size: 14px;
+  border: 2px dotted #ccc;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.tooltip-item {
+  align-self: flex-start;
+}
+.tooltip {
+  display: none;
+}
+.tooltip[data-show] {
+  display: block;
 }
 </style>

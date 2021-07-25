@@ -85,10 +85,9 @@
     </button>
     <div 
       class="user-item"
-      v-for="(user, n) in users"
-      :key="n"
       v-show="user.disabled"
       :ref="`user${user.id}`"
+      v-for="(user, n) in users" :key="n"
       @mouseenter = showPopper(user.id)
       @mouseleave = hidePopper(user.id)
     >
@@ -98,17 +97,19 @@
         role="tooltip"
         :ref="`popper${user.id}`"
       >
-        <div class="tooltip-item">
-          Пользователь: {{ user.name }}
-        </div>
-        <div class="tooltip-item">
-          Микрофон: {{ user.audioinput ? user.audioinput.label : 'нет' }}
-        </div>
-        <div class="tooltip-item">
-          Камера: {{ user.videoinput ? user.videoinput.label : 'нет' }}
-        </div>
-        <div class="tooltip-item">
-          Динамики: {{ user.audiooutput ? user.audiooutput.label : 'нет' }}
+        <div class="tooltip-inner">
+          <div class="tooltip-item">
+            Пользователь: {{ user.name }}
+          </div>
+          <div class="tooltip-item">
+            Микрофон: {{ user.audioinput ? user.audioinput.label : 'нет' }}
+          </div>
+          <div class="tooltip-item">
+            Камера: {{ user.videoinput ? user.videoinput.label : 'нет' }}
+          </div>
+          <div class="tooltip-item">
+            Динамики: {{ user.audiooutput ? user.audiooutput.label : 'нет' }}
+          </div>
         </div>
       </div>
     </div>
@@ -296,14 +297,21 @@ export default {
 
       this.user.disabled = true;
       this.$nextTick(function() {
-        this.poppers[`user${this.user.id}`] =
+        this.poppers[this.user.id] =
         new Popper(
           this.$refs[`user${this.user.id}`],
           this.$refs[`popper${this.user.id}`],
           {
+            modifiers: [
+              {
+                name: 'offset',
+                options: {
+                  offset: [0, 8],
+                },
+              },
+            ],
             placement: 'top',
-            offset: [0, 20],
-            strategy: 'fixed',
+            strategy: 'absolute',
           }
         )
 
@@ -314,6 +322,7 @@ export default {
 
     showPopper(id) {
       this.$refs[`popper${id}`].setAttribute('data-show', '')
+      this.poppers[id].update();
     },
 
     hidePopper(id) {
@@ -436,6 +445,9 @@ export default {
   background-color: #669933;
   min-width: 16px;
   text-align: center;
+  &:hover {
+    background-color: #e7e3a0;
+  }
 }
 .for-buttons {
   display: flex;
@@ -458,6 +470,7 @@ export default {
   flex-direction: row;
   align-items: center;
 }
+
 .tooltip {
   background: #fff;
   color: #000;
@@ -466,12 +479,15 @@ export default {
   font-size: 14px;
   border: 2px dotted #ccc;
   border-radius: 4px;
+}
+.tooltip-inner {
   display: flex;
   flex-direction: column;
 }
 .tooltip-item {
   align-self: flex-start;
 }
+
 .tooltip {
   display: none;
 }

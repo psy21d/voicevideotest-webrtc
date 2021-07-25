@@ -8,59 +8,109 @@
     </div>
     <div class="selectors">
       <div class="caption">Выбрать микрофон</div>
-      <select class="select" v-model="audioinput">
-        <option
-          v-for="item in sortedDevices.audioinput"
-          :key="item.deviceID"
-          :disabled="item.disabled"
-          :value="item"
-        >
-          {{ item.label }}
-        </option>
-      </select>
+      <div class="for-selectors">
+        <select class="select" :class="{ disabled: (audioinput ? audioinput.disabled : false), off: noaudioinput }" v-model="audioinput">
+          <option
+            v-for="item in sortedDevices.audioinput"
+            :key="item.deviceID"
+            :disabled="item.disabled"
+            :value="item"
+          >
+            {{ item.label }}
+          </option>
+        </select>
+        
+        <label>
+          <input class="checkbox" type="checkbox" v-model="noaudioinput" />
+          <div class="chb"></div>
+        </label>
+      </div>
 
       <div class="caption">Выбрать видеокамеру</div>
-
-      <select class="select" v-model="videoinput">
-        <option
-          v-for="item in sortedDevices.videoinput"
-          :key="item.deviceID"
-          :disabled="item.disabled"
-          :value="item"
-        >
-          {{ item.label }}
-        </option>
-      </select>
+      <div class="for-selectors">  
+        <select class="select" :class="{ disabled: (audioinput ? videoinput.disabled : false), off: novideoinput}" v-model="videoinput">
+          <option
+            v-for="item in sortedDevices.videoinput"
+            :key="item.deviceID"
+            :disabled="item.disabled"
+            :value="item"
+          >
+            {{ item.label }}
+          </option>
+        </select>
+        <label>
+          <input class="checkbox" type="checkbox" v-model="novideoinput" />
+          <div class="chb"></div>
+        </label>
+      </div>
 
       <div class="caption">Выбрать устройство вывода звука</div>
-      
-      <select class="select" v-model="audiooutput">
-        <option
-          v-for="item in sortedDevices.audiooutput"
-          :key="item.deviceID"
-          :disabled="item.disabled"
-          :value="item"
-        >
-          {{ item.label }}
-        </option>
-      </select>
+      <div class="for-selectors">
+        <select class="select" :class="{ disabled: (audioinput ? audiooutput.disabled : false), off: noaudiooutput }" v-model="audiooutput">
+          <option
+            v-for="item in sortedDevices.audiooutput"
+            :key="item.deviceID"
+            :disabled="item.disabled"
+            :value="item"
+          >
+            {{ item.label }}
+          </option>
+        </select>
+        <label>
+          <input class="checkbox" type="checkbox" v-model="noaudiooutput" />
+          <div class="chb"></div>
+        </label>
+      </div>
+
+      <div class="caption">Выбрать пользователя</div>
+      <div class="for-selectors">
+        <select class="select" :class="{ disabled: (user ? user.disabled : false) }" v-model="user">
+          <option
+            v-for="(user, n) in users"
+            :key="n"
+            :disabled="user.disabled"
+            :value="user"
+          >
+            {{ user.name }} 
+            —
+            {{ user.type }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="for-buttons"> 
+    <button class="button" @click="addUser">
+      Добавить в список
+    </button>
+    <div 
+      class="user-item"
+      v-for="(user, n) in users"
+      :key="n"
+      v-show="user.disabled"
+    >
+      {{ n+1 }}
     </div>
   </div>
 </template>
 
 <script>
-import webrtcAdapter from 'webrtc-adapter';
+// import webrtcAdapter from 'webrtc-adapter';
 import '@/../node_modules/typeface-roboto/index.css';
 /* eslint-disable-next-line */
 import WaveSurfer from'wavesurfer.js';
-import Cursor from "wavesurfer.js/dist/plugin/wavesurfer.cursor";
 import Microphone from'wavesurfer.js/dist/plugin/wavesurfer.microphone';
 
+import { v4 as uuidv4 } from 'uuid';
 
 export default {
   name: 'Page',
   components: {
-
+  },
+  props: {
+    users: {
+      type: Object
+    }
   },
   data() {
     return {
@@ -77,18 +127,21 @@ export default {
       pause: false,
       playerOptions: {
         plugins: [
-          Cursor.create(),
-          Microphone.create()
+          Microphone.create(),
         ],
         height: 60,
       },
       wavesurfer: null,
       initialized: false,
       mic: null,
+      user: null,
+      noaudioinput: false,
+      novideoinput: false,
+      noaudiooutput: false,
     }
   },
   mounted() {
-    window.webrtcAdapter = webrtcAdapter;
+    // window.webrtcAdapter = webrtcAdapter;
     const constraints = {
       'video': true,
       'audio': true
@@ -110,15 +163,24 @@ export default {
     let mic = this.wavesurfer.microphone
 
     mic.on('deviceReady', function(stream) {
-        console.log('Device ready!', stream);        
+      stream
+      // console.log('Device ready!', stream);        
     });
     mic.on('deviceError', function(code) {
-        console.warn('Device error: ' + code);
+      console.warn('Device error: ' + code);
     });
 
     mic.start();
 
     this.mic = mic;
+
+    this.users.forEach(user => {
+      if (!user.id) {
+        user.id = uuidv4()
+      }
+    })
+
+    this.$emit('update:users', this.users)
   },
   watch: {
     devices(newDevs) {
@@ -141,6 +203,8 @@ export default {
       this.sortedDevices.videoinput && this.sortedDevices.videoinput[0] && (this.sortedDevices.videoinput[0])
       this.sortedDevices.audiooutput && this.sortedDevices.audiooutput[0] && (this.sortedDevices.audiooutput[0].disabled = true)
       this.start();
+
+      this.users && this.users[0] && (this.user = this.users[0])
     },
     audioinput() {
       if (this.pause) return;
@@ -156,10 +220,59 @@ export default {
       }
     },
   },
+  emits: ['update:users'],
   methods: {
     gotDevices(deviceInfos) {
       this.devices = deviceInfos;
-      window.devices = deviceInfos;
+      // window.devices = deviceInfos;
+    },
+
+    addUser() {
+
+      if (this.videoinput.disabled && !this.novideoinput) {
+        alert('Видеокамера уже занята, выберите другую');
+        return;
+      }
+
+      if (this.audiooutput.disabled && !this.noaudiooutput) {
+        alert('Устройство вывода звука уже занято, выберите другое')
+        return;
+      } 
+      
+      if (this.audioinput.disabled && !this.noaudioinput) {
+        alert('Микрофон уже занят, выберите другой')        
+        return;
+      }
+
+      if (this.user.disabled) {
+        alert('Пользователь уже выбран, выберите другого')        
+        return;
+      }
+
+      if (!this.novideoinput) {
+        this.user.videoinput = this.videoinput
+        this.videoinput.disabled = true;
+      } else {
+        this.user.videoinput = null
+      }
+       
+      if (!this.noaudiooutput) {
+        this.user.audiooutput = this.audiooutput
+        this.audiooutput.disabled = true;
+      } else {
+        this.user.audiooutput = null
+      }
+
+      if (!this.noaudioinput) {
+        this.user.audioinput = this.audioinput
+        this.audioinput.disabled = true;
+      } else {
+        this.user.audioinput = null
+      }
+
+      this.user.disabled = true;
+
+      this.$emit('update:users', this.users)
     },
 
     // Attach audio output device to video element using device/sink ID.
@@ -168,7 +281,7 @@ export default {
       if (typeof element.sinkId !== 'undefined') {
         element.setSinkId(sinkId)
             .then(() => {
-              console.log(`Success, audio output device attached: ${sinkId}`);
+              // console.log(`Success, audio output device attached: ${sinkId}`);
             })
             .catch(error => {
               let errorMessage = error;
@@ -190,7 +303,7 @@ export default {
     },
 
     gotStream(stream) {
-      window.stream = stream; // make stream available to console
+      // window.stream = stream; // make stream available to console
       this.stream = stream;
       this.pause = false;
       //this.$refs.video.srcObject = stream;
@@ -203,8 +316,8 @@ export default {
     },
 
     start() {
-      if (window.stream) {
-        window.stream.getTracks().forEach(track => {
+      if (this.stream) {
+        this.stream.getTracks().forEach(track => {
           track.stop();
         });
       }
@@ -214,7 +327,12 @@ export default {
         audio: {deviceId: audioSource ? {exact: audioSource} : undefined},
         video: {deviceId: videoSource ? {exact: videoSource} : undefined}
       };
-      this.mic.constraints = constraints;
+
+      this.mic.constraints = {
+        ...constraints,
+        video: false,
+      };
+
       this.mic.start()
       navigator.mediaDevices.getUserMedia(constraints).then(this.gotStream).catch(this.handleError);
     },
@@ -223,7 +341,7 @@ export default {
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
+<style scoped lang="scss">
 .page {
   display: flex;
   flex-direction: row;
@@ -232,11 +350,20 @@ export default {
   margin: 4px;
   padding: 10px;
   margin-left: 0px;
+  margin-right: 0px;
+  flex-grow: 1;
+  &.disabled {
+    background-color: #debebe;
+  }
+  &.off {
+    background-color: #ddd;
+    color: #ccc
+  }
 }
 .for-video {
   width: 260px;
   margin-right: 20px;
-  min-width: 260px;
+  min-width: 280px;
 }
 .video {
   width: 100%;
@@ -251,5 +378,39 @@ export default {
 .selectors {
   display: flex;
   flex-direction: column;
+}
+.button {
+  background: none;
+  padding: 10px;
+  border: none;
+  background-color: #669933;
+}
+.user-item {
+  padding: 10px;
+  margin-left: 10px;
+  background-color: #669933;
+  min-width: 16px;
+  text-align: center;
+}
+.for-buttons {
+  display: flex;
+  flex-direction: row;
+}
+.checkbox {
+  display: none;
+  & ~ div.chb {
+    height: 39px;
+    width: 39px;
+    background-color: #669933;
+    margin-left: 10px;
+  }
+  &:checked ~ div.chb {
+    background-color: #debebe;
+  }
+}
+.for-selectors {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 </style>
